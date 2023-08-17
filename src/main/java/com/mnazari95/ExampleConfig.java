@@ -1,15 +1,15 @@
-package com.example;
+package com.mnazari95;
 
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 
-@ConfigGroup("example")
+@ConfigGroup("test")
 public interface ExampleConfig extends Config
 {
 	@ConfigItem(
-		keyName = "greeting",
-		name = "Welcome Greeting",
+		keyName = "welcome message",
+		name = "YES SIRR",
 		description = "The message to show to the user when they login"
 	)
 	default String greeting()
