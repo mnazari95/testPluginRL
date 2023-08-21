@@ -14,7 +14,8 @@ public class ExamplePluginOverlay extends OverlayPanel
 
 
     @Inject
-    ExamplePluginOverlay(PlayerDamages playerDamages) {
+    ExamplePluginOverlay(PlayerDamages playerDamages)
+    {
         this.playerDamages = playerDamages;
     }
 
@@ -24,8 +25,32 @@ public class ExamplePluginOverlay extends OverlayPanel
 
         panelComponent.getChildren().add(
                 LineComponent.builder()
+                        .left("overhead prayer status: ")
+                        .right(Boolean.toString(playerDamages.isOverheadPrayerState()))
+                        .build()
+        );
+        panelComponent.getChildren().add(
+                LineComponent.builder()
                         .left("total Damage: ")
                         .right(Integer.toString(playerDamages.getTotalDamage()))
+                        .build()
+        );
+        panelComponent.getChildren().add(
+                LineComponent.builder()
+                        .left("game tick counter: ")
+                        .right(Integer.toString(playerDamages.getGameTickCounter()))
+                        .build()
+        );
+        panelComponent.getChildren().add(
+                LineComponent.builder()
+                        .left("overhead counter: ")
+                        .right(Integer.toString(playerDamages.getOverheadEventTriggeredCounter()))
+                        .build()
+        );
+        panelComponent.getChildren().add(
+                LineComponent.builder()
+                        .left("prayer tick: ")
+                        .right(Integer.toString(playerDamages.getOverheadTickCounter()))
                         .build()
         );
         return super.render(graphics);

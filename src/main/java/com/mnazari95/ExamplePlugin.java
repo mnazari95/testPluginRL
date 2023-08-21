@@ -97,26 +97,58 @@ public class ExamplePlugin extends Plugin
 	private NPC playerFightingNPC;
 
 	@Subscribe
-	public void onGameTick(GameTick gameTick)
-	{
+	public void onGameTick(GameTick gameTick) {
 		//called roughly every 600ms
-		if (client.isPrayerActive(Prayer.PROTECT_FROM_MELEE))
+		playerDamages.incrementGameTickCounter();
+
+		if (interactedNpc != null && interactedNpc.isDead()) {
+			playerDamages.setTotalDamage(0);
+			playerDamages.setHitCounter(0);
+		}
+
+		if (playerDamages.getPlayerId() != client.getLocalPlayer().getId()) {
+			playerDamages.setPlayerId(client.getLocalPlayer().getId());
+		}
+
+		//handle state of overhead melee prayer
+		if (!client.isPrayerActive(Prayer.PROTECT_FROM_MELEE) && playerDamages.getOverheadEventTriggeredCounter() == 1) {
+			//client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "protect from melee is off", null);
+			playerDamages.setOverheadPrayerState(false);
+			playerDamages.resetOverheadCounter();
+		} else if (client.isPrayerActive(Prayer.PROTECT_FROM_MELEE) && playerDamages.getOverheadEventTriggeredCounter() >= 2) {
+			playerDamages.setOverheadPrayerState(true);
+			//client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "protect from melee is on", null);
+			playerDamages.resetOverheadCounter();
+		} else if (client.getLocalPlayer().getOverheadIcon() == HeadIcon.MELEE && playerDamages.getOverheadEventTriggeredCounter() > 2) {
+			playerDamages.setOverheadPrayerState(true);
+			//client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "protect from melee is on xxx", null);
+			playerDamages.resetOverheadCounter();
+		} else if (client.getLocalPlayer().getOverheadIcon() == null && playerDamages.getOverheadEventTriggeredCounter() > 2) {
+			playerDamages.setOverheadPrayerState(false);
+			//client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "protect from melee is off zzz", null);
+			playerDamages.resetOverheadCounter();
+		}
+
+		if (playerDamages.isOverheadPrayerState()) {
+			//increment this value for each game tick the overhead prayer is enabled
+			playerDamages.incrementPrayerTickCounter();
+		} else if (playerDamages.getOverheadTickCounter() > 0)
 		{
-			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "protect from melee is on", null);
+			playerDamages.resetPrayerTickCounter();
 		}
 	}
 
 	@Subscribe
-	public void onVarbitChanged(VarbitChanged vb)
-	{
+	public void onVarbitChanged(VarbitChanged vb) {
 		//when server side variable changes
-		if (vb.getVarbitId() == Varbits.PRAYER_PROTECT_FROM_MELEE)
-		{
-			if (vb.getValue() == 1)
-			{
-				client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "MELEE ON", null);
-			}
 
+		if (vb.getVarbitId() == 4101)
+		{
+			//local player? melee overhead prayer
+			if(vb.getValue() == 16384 || vb.getValue() == 0)
+			{
+				playerDamages.incrementOverheadCounter();
+			}
 		}
 	}
 
@@ -124,8 +156,6 @@ public class ExamplePlugin extends Plugin
 	public void onInteractingChanged(InteractingChanged interactingChanged)
 	{
 		Player localPlayer = client.getLocalPlayer();
-		Actor mobT = interactingChanged.getTarget();
-		Actor mobS = interactingChanged.getSource();
 
 		if (interactingChanged.getSource() == localPlayer
 				&& client.getTickCount() > clickTick && interactingChanged.getTarget() != interactedNpc)
@@ -134,15 +164,6 @@ public class ExamplePlugin extends Plugin
 			attacked = interactingChanged.getTarget() != null && interactingChanged.getTarget().getCombatLevel() > 0;
 		}
 
-		if (mobS != null && mobS.isInteracting())
-		{
-			log.debug("the mob source is interacting with..{}", mobS.getName());
-		}
-
-		if (mobT != null && mobT.isInteracting())
-		{
-			log.debug("the mob target is interacting with..{}", mobT.getName());
-		}
 	}
 	@Subscribe
 	public void onHitsplatApplied(HitsplatApplied hitsplatApplied)
@@ -164,7 +185,7 @@ public class ExamplePlugin extends Plugin
 			playerDamages.addPlayerDamage(hitsplat.getAmount());
 			playerDamages.incrementHitCounter();
 			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "Hit a "+ hitsplat.getAmount() +" with type "+ hitsplat.getHitsplatType() +" applied a total: " + playerDamages.getTotalDamage(), null);
-		} else if (hitsplat.isOthers() && (npcId == HELLHOUND_ID))
+		} else if (hitsplat.isOthers() && (npcId == interactedNpc.getId()))
 		{
 			log.debug("dmg to player {}", hitsplatApplied.getHitsplat().getAmount());
 		}
@@ -176,7 +197,7 @@ public class ExamplePlugin extends Plugin
 	{
 		NPC npc = npcDespawned.getNpc();
 
-		if (npc == interactedNpc || npc == client.getLocalPlayer().getInteracting())
+		if (getInteractedTarget() == npc)
 		{
 			interactedNpc = null;
 			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "You just " + playerDamages.getHitCounter() + " hit that mob!", null);
